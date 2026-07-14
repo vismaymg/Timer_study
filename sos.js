@@ -1,1 +1,1 @@
-hi man
+create database
