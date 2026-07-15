@@ -1,0 +1,110 @@
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27,16,2);
+
+const int buzzerPin = 8;
+const int startBtn = 2;
+const int pauseBtn = 3;
+const int stopBtn = 4;
+const int extraBtn = 5;
+
+int minutes = 25;
+int seconds = 0;
+
+bool running = false;
+bool paused = false;
+
+// Motivational messages
+const char* messages[] = {
+  "Stay strong!!!",
+  "Keep pushing!!!",
+  "You got this!!!",
+  "Focus = Success",
+  "study to be smart!!!"
+};
+
+int msgIndex = 0;
+unsigned long lastMsgChange = 0;
+
+void setup() {
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(startBtn, INPUT_PULLUP);
+  pinMode(pauseBtn, INPUT_PULLUP);
+  pinMode(stopBtn, INPUT_PULLUP);
+  pinMode(extraBtn, INPUT_PULLUP);
+
+  lcd.begin(16, 2);
+  lcd.setCursor(0,0);
+  lcd.print("Study Timer");
+  delay(2000);
+}
+
+void loop() {
+  // --- Button Controls ---
+  if (digitalRead(startBtn) == LOW) {
+    running = true;
+    paused = false;
+    delay(300); // debounce
+  }
+  if (digitalRead(pauseBtn) == LOW) {
+    paused = !paused;
+    delay(300);
+  }
+  if (digitalRead(stopBtn) == LOW) {
+    running = false;
+    paused = false;
+    minutes = 25;
+    seconds = 0;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Stopped. Reset!");
+    delay(1000);
+  }
+  if (digitalRead(extraBtn) == LOW) {
+    minutes += 1;
+    lcd.setCursor(0,1);
+    lcd.print("Extra time added!");
+    delay(1000);
+  }
+
+  // --- Timer Logic ---
+  if (running && !paused) {
+    delay(1000);
+    if (seconds == 0) {
+      if (minutes == 0) {
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Great Job!");
+        lcd.setCursor(0,1);
+        lcd.print("Session Done");
+        tone(buzzerPin, 1000);
+        delay(3000);
+        noTone(buzzerPin);
+        while(true); // stop everything
+      }
+      minutes--;
+      seconds = 59;
+    } else {
+      seconds--;
+    }
+  }
+
+  // --- LCD Display ---
+  lcd.setCursor(0,0);
+  lcd.print("Time Left: ");
+  if (minutes < 10) lcd.print("0");
+  lcd.print(minutes);
+  lcd.print(":");
+  if (seconds < 10) lcd.print("0");
+  lcd.print(seconds);
+
+  // --- Motivational Sentence Rotation ---
+  if (millis() - lastMsgChange > 10000) { // change every 10 seconds
+    msgIndex = (msgIndex + 1) % 5;
+    lastMsgChange = millis();
+  }
+  lcd.setCursor(0,1);
+  lcd.print("                "); //16 spaces
+  lcd.setCursor(0,1);
+  lcd.print(messages[msgIndex]);
+}
