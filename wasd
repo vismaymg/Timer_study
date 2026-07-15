@@ -1,68 +1,106 @@
-
 #include <Adafruit_LiquidCrystal.h>
 
 Adafruit_LiquidCrystal lcd_1(0);
 
 const int buzzerPin = 8;
+const int startBtn = 2;
+const int pauseBtn = 3;
+const int stopBtn = 4;
+const int extraBtn = 5;
 
 int minutes = 25;
 int seconds = 0;
 
-void setup()
-{
+bool running = false;
+bool paused = false;
+
+// Motivational messages
+const char* messages[] = {
+  "Stay strong! 💪",
+  "Keep pushing!",
+  "You got this!",
+  "Focus = Success"
+};
+int msgIndex = 0;
+unsigned long lastMsgChange = 0;
+
+void setup() {
   pinMode(buzzerPin, OUTPUT);
+  pinMode(startBtn, INPUT_PULLUP);
+  pinMode(pauseBtn, INPUT_PULLUP);
+  pinMode(stopBtn, INPUT_PULLUP);
+  pinMode(extraBtn, INPUT_PULLUP);
 
   lcd_1.begin(16, 2);
-
   lcd_1.setCursor(0,0);
   lcd_1.print("Study Timer");
   delay(2000);
 }
 
-void loop()
-{
+void loop() {
+  // --- Button Controls ---
+  if (digitalRead(startBtn) == LOW) {
+    running = true;
+    paused = false;
+    delay(300); // debounce
+  }
+  if (digitalRead(pauseBtn) == LOW) {
+    paused = !paused; // toggle pause
+    delay(300);
+  }
+  if (digitalRead(stopBtn) == LOW) {
+    running = false;
+    paused = false;
+    minutes = 25;
+    seconds = 0;
+    lcd_1.clear();
+    lcd_1.setCursor(0,0);
+    lcd_1.print("Stopped. Reset!");
+    delay(1000);
+  }
+  if (digitalRead(extraBtn) == LOW) {
+    minutes += 1; // add 1 minute
+    lcd_1.setCursor(0,1);
+    lcd_1.print("Extra time added!");
+    delay(1000);
+  }
+
+  // --- Timer Logic ---
+  if (running && !paused) {
+    delay(1000);
+    if (seconds == 0) {
+      if (minutes == 0) {
+        lcd_1.clear();
+        lcd_1.setCursor(0,0);
+        lcd_1.print("Great Job!");
+        lcd_1.setCursor(0,1);
+        lcd_1.print("Session Done");
+        tone(buzzerPin, 1000);
+        delay(3000);
+        noTone(buzzerPin);
+        while(true); // stop everything
+      }
+      minutes--;
+      seconds = 59;
+    } else {
+      seconds--;
+    }
+  }
+
+  // --- LCD Display ---
   lcd_1.setCursor(0,0);
-  lcd_1.print("Time Left:");
-
-  lcd_1.setCursor(0,1);
-
-  if(minutes < 10)
-    lcd_1.print("0");
-
+  lcd_1.print("Time Left: ");
+  if (minutes < 10) lcd_1.print("0");
   lcd_1.print(minutes);
   lcd_1.print(":");
-
-  if(seconds < 10)
-    lcd_1.print("0");
-
+  if (seconds < 10) lcd_1.print("0");
   lcd_1.print(seconds);
 
-  delay(1000);
-
-  if(seconds == 0)
-  {
-    if(minutes == 0)
-    {
-      lcd_1.clear();
-
-      lcd_1.setCursor(0,0);
-      lcd_1.print("Great Job!");
-
-      lcd_1.setCursor(0,1);
-      lcd_1.print("Session Done");
-
-      tone(buzzerPin, 1000);
-      delay(3000);
-      noTone(buzzerPin);
-
-      while(true);
-    }
-
-    minutes--;
-    seconds = 59;
+  // --- Motivational Sentence Rotation ---
+  if (millis() - lastMsgChange > 10000) { // change every 10 seconds
+    msgIndex = (msgIndex + 1) % 4;
+    lastMsgChange = millis();
   }
-  else
-  {
-    seconds--;
-  }
+  lcd_1.setCursor(0,1);
+  lcd_1.print(messages[msgIndex]);
 }
